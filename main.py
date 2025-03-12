@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from math import ceil
+from math import ceil, sqrt
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
+from scipy.stats import f
 
 data_path = "./data/data.csv"
 data = pd.read_csv(data_path)
@@ -21,11 +22,18 @@ def LR_Model(data, h1, h2, graph=False):
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, test_size=0.1, random_state=100)
 
-    model = LinearRegression()
-    model.fit(x_train, y_train)
+    model = LinearRegression().fit(x_train, y_train)
 
     predicted_y = model.predict(x_test)
+
     mse = mean_squared_error(y_test, predicted_y)
+    r_squared = model.score(x_train, y_train)
+    n = len(x_train)
+    p = 1
+    df = n - p - 1  # Denominator degrees of freedom
+    # F = \frac{R^2}{1-R^2} \frac{n-p-1}{p}
+    F = (r_squared/(1-r_squared)) * df/p
+    p_value = f.sf(F, p, df)
 
     if graph:
         xs = np.linspace(0, ceil(max(x)[0]), 1000)
@@ -40,10 +48,9 @@ def LR_Model(data, h1, h2, graph=False):
         plt.legend()
         plt.show()
 
-    return {"MSE": mse}
+    return {"MSE": mse, "F": F, "p": p_value, "r2": r_squared}
 
 
 if __name__ == "__main__":
-    model = LR_Model(data, "TB Cases", "Life Expectancy", True)
-    print(
-        f"MSE of the linear model between TB cases and life expectancy: {model["MSE"]}\nHence this is not a very good model (but that wasn't really the point). This data is perhaps not the best candidate for a linear regression, by visual inspection, because there are so many countries with no TB cases but wildly different life expectancy.")
+    model = LR_Model(data, "TB Cases", "Life Expectancy")
+    print(f"Linear model between TB cases and life expectancy:\n\tr^2:\t\t{model["r2"]}\n\tMSE:\t\t{model["MSE"]}\n\tF:\t\t{model["F"]}\n\tp value:\t\t{model["p"]:.2e}\n\nHence this is not a great model but its actually by no means bad because it means that a typical distance between a predicted value and the observed value is {sqrt(model["MSE"]):.2f}.")
